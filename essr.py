@@ -3,7 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import vgg16
 from torchvision.models.vgg import VGG16_Weights
-import numpy as np
+from torch.optim import Adam
+from torch.utils.data import DataLoader, Dataset,TensorDataset
+
 import os
 import warnings
 import urllib.error
@@ -98,9 +100,10 @@ class HybridLoss(nn.Module):
         super(HybridLoss, self).__init__()
         self.l1_loss = nn.L1Loss()
         
-        # Attempt to load VGG16 with pretrained weights
+
         try:
-            vgg = vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features[:16].eval().to(device)
+            vgg = vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features[:16].eval().to(device) 
+            # Download VGG16 weights if not available locally
             for param in vgg.parameters():
                 param.requires_grad = False
             self.vgg = vgg
@@ -147,13 +150,12 @@ class HybridLoss(nn.Module):
 
 # Training Loop
 def train_essr(model, train_loader, epochs=200, device=None):
-    # Automatically select device
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'Using device: {device}')
 
     model = model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = Adam(model.parameters(), lr=1e-4,weight_decay=1e-4)
     loss_fn = HybridLoss(device).to(device)
     
     # Use mixed-precision training only if CUDA is available
@@ -192,7 +194,7 @@ def train_essr(model, train_loader, epochs=200, device=None):
 # Example Usage
 if __name__ == '__main__':
     # Placeholder dataset (replace with SET5/DIV2K)
-    from torch.utils.data import DataLoader, TensorDataset
+
     lr_data = torch.randn(100, 3, 64, 64)
     hr_data = torch.randn(100, 3, 256, 256)
     dataset = TensorDataset(lr_data, hr_data)

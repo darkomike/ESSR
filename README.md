@@ -1,11 +1,7 @@
-# Instructions to Verify the Fix for ESSR PyTorch Implementation
+# Instructions to test the  ESSR PyTorch Implementation
 
-This document provides step-by-step instructions to verify that the runtime errors in the PyTorch implementation of the **Enhanced Self-Supervised Super-Resolution (ESSR)** model have been resolved. The fixes address:
-1. **CUDA Error**: No NVIDIA GPU or driver detected.
-2. **VGG16 Weights Download Error**: Network issues preventing download of pretrained VGG16 weights.
-3. **GradScaler Deprecation Warning**: Deprecated `torch.cuda.amp.GradScaler` API.
+This document provides step-by-step instructions to the model in the PyTorch implementation of the **Enhanced Self-Supervised Super-Resolution (ESSR)** model.
 
-These instructions guide you through setting up the environment, running the code, and verifying the fixes, including handling offline scenarios and testing with real datasets.
 
 ## 1. Environment Setup
 Ensure your system is ready to run the ESSR code.
