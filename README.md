@@ -277,27 +277,3 @@ To confirm all fixes are working:
 By following these instructions, you should verify that the ESSR implementation runs without the previous runtime errors, on both CPU and GPU, with or without internet connectivity.
 
 ---
-
-### Instructions to Save as a `.md` File
-1. Copy the content above.
-2. Open a text editor (e.g., Notepad, VSCode, or nano).
-3. Paste the content into a new file.
-4. Save the file with the name `instructions.md` (ensure the `.md` extension is included).
-   - Example in terminal:
-     ```bash
-     nano instructions.md
-     # Paste the content, then Ctrl+O, Enter, Ctrl+X to save and exit
-     ```
-5. Use the file alongside the ESSR code (`essr.py`, `artifact_id="3647a65d-35bd-4d00-a83a-5beaf849cc3f"`) to verify the fixes.
-
-### Notes
-- **Content**: The output is the raw Markdown content, identical to the previous response, provided as plain text for saving as `instructions.md`.
-- **Purpose**: The instructions guide users to verify that the ESSR code runs without CUDA, VGG16 weights, or `GradScaler` errors, covering setup, execution, and troubleshooting.
-- **Related Artifacts**:
-  - Research paper: `artifact_id="241257f0-86f6-400f-a5cc-cf5b6e54f00f"` (unchanged).
-  - PyTorch code: `artifact_id="3647a65d-35bd-4d00-a83a-5beaf849cc3f"` (unchanged).
-- **Clarification**:
-  - If you meant a different output (e.g., a downloadable file link, a different Markdown file, or the content wrapped in `<xaiArtifact/>`), please clarify.
-  - If you need modifications (e.g., additional instructions, a specific format), let me know.
-  - If you encounter errors while testing the code, provide the traceback for a targeted fix.
-
