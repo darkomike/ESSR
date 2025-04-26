@@ -274,6 +274,6 @@ To confirm all fixes are working:
 - **Contact for Support**:
   - If you encounter issues or need help with dataset integration, share details (error messages, system specs) for tailored assistance.
 
-By following these instructions, you should verify that the ESSR implementation runs without the previous runtime errors, on both CPU and GPU, with or without internet connectivity.
+By following these instructions, you should be able to run the ESSR framework.
 
 ---
