@@ -191,7 +191,6 @@ def train_essr(model, train_loader, epochs=200, device=None):
             total_loss += loss.item()
         print(f'Epoch {epoch+1}, Loss: {total_loss / len(train_loader):.4f}')
 
-# Example Usage
 if __name__ == '__main__':
     # Placeholder dataset (replace with SET5/DIV2K)
 
