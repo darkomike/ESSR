@@ -8,8 +8,10 @@ from torch.utils.data import DataLoader, Dataset,TensorDataset
 import os
 import warnings
 import urllib.error
+import matplotlib.pyplot as plt
+import numpy as np
 
-# Multi-Scale Feature Extractor (Swin Transformer-based)
+
 class MultiScaleExtractor(nn.Module):
     def __init__(self, in_channels=3, out_channels=64):
         super(MultiScaleExtractor, self).__init__()
@@ -32,7 +34,10 @@ class MultiScaleExtractor(nn.Module):
         # Channel attention for feature fusion
         self.attention = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(out_channels * 3, out_channels, 1),
+            # The in_channels of the Conv2d layer within the attention module
+            # needs to be changed to out_channels*3 to match the number of channels
+            # in the 'combined' tensor.
+            nn.Conv2d(out_channels * 3, out_channels * 3, 1),
             nn.Sigmoid()
         )
         self.fusion = nn.Conv2d(out_channels * 3, out_channels, 1)
@@ -46,7 +51,7 @@ class MultiScaleExtractor(nn.Module):
         combined = combined * attn
         return self.fusion(combined)
 
-# Domain-Adaptive Preprocessing Module
+
 class PreprocessingModule(nn.Module):
     def __init__(self, channels=3):
         super(PreprocessingModule, self).__init__()
@@ -57,7 +62,7 @@ class PreprocessingModule(nn.Module):
         filtered = self.conv(x)
         return self.filter(filtered)
 
-# ESSR Model
+
 class ESSR(nn.Module):
     def __init__(self, upscale_factor=4):
         super(ESSR, self).__init__()
@@ -93,15 +98,16 @@ class ESSR(nn.Module):
         x = self.upsample(x)
         return self.output(x)
 
+
 # Hybrid Loss Function
 class HybridLoss(nn.Module):
     def __init__(self, device):
         super(HybridLoss, self).__init__()
         self.l1_loss = nn.L1Loss()
-        
+
 
         try:
-            vgg = vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features[:16].eval().to(device) 
+            vgg = vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features[:16].eval().to(device)
             # Download VGG16 weights if not available locally
             for param in vgg.parameters():
                 param.requires_grad = False
@@ -126,7 +132,7 @@ class HybridLoss(nn.Module):
                 )
                 # Initialize VGG16 without pretrained weights as a last resort
                 self.vgg = vgg16(weights=None).features[:16].eval().to(device)
-        
+
         self.contrastive_loss = nn.CrossEntropyLoss()
 
     def perceptual_loss(self, sr, hr):
@@ -135,10 +141,15 @@ class HybridLoss(nn.Module):
         return self.l1_loss(sr_features, hr_features)
 
     def contrastive_loss_fn(self, features1, features2, batch_size):
+        # Reshape features to 2D before matrix multiplication
+        features1 = features1.view(batch_size, -1)  # Flatten spatial dimensions
+        features2 = features2.view(batch_size, -1)  # Flatten spatial dimensions
+
         # Simplified InfoNCE loss
         logits = torch.matmul(features1, features2.t())
         labels = torch.arange(batch_size).to(logits.device)
         return self.contrastive_loss(logits, labels)
+
 
     def forward(self, sr, hr, features1, features2, batch_size, discriminator, real=True):
         l1 = self.l1_loss(sr, hr)
@@ -147,6 +158,7 @@ class HybridLoss(nn.Module):
         adv = -torch.mean(discriminator(sr)) if real else torch.mean(discriminator(sr))
         return 1.0 * l1 + 0.1 * perceptual + 0.5 * contrastive + 0.01 * adv
 
+
 # Training Loop
 def train_essr(model, train_loader, epochs=200, device=None):
     if device is None:
@@ -154,12 +166,15 @@ def train_essr(model, train_loader, epochs=200, device=None):
     print(f'Using device: {device}')
 
     model = model.to(device)
-    optimizer = Adam(model.parameters(), lr=1e-4,weight_decay=1e-4)
+    optimizer = Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
     loss_fn = HybridLoss(device).to(device)
-    
+
     # Use mixed-precision training only if CUDA is available
     use_amp = torch.cuda.is_available()
     scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+
+    # Initialize an empty list to store losses for each epoch
+    epoch_losses = []
 
     for epoch in range(epochs):
         model.train()
@@ -167,7 +182,7 @@ def train_essr(model, train_loader, epochs=200, device=None):
         for lr, hr in train_loader:
             lr, hr = lr.to(device), hr.to(device)
             optimizer.zero_grad()
-            
+
             # Use autocast only if CUDA is available
             with torch.cuda.amp.autocast(enabled=use_amp):
                 # Generate augmented views for contrastive loss
@@ -177,7 +192,7 @@ def train_essr(model, train_loader, epochs=200, device=None):
                 features1 = model.extractor(lr_aug1)
                 features2 = model.extractor(lr_aug2)
                 loss = loss_fn(sr, hr, features1, features2, lr.size(0), model.discriminator)
-            
+
             # Backpropagation with or without mixed precision
             if use_amp:
                 scaler.scale(loss).backward()
@@ -186,17 +201,35 @@ def train_essr(model, train_loader, epochs=200, device=None):
             else:
                 loss.backward()
                 optimizer.step()
-            
+
             total_loss += loss.item()
-        print(f'Epoch {epoch+1}, Loss: {total_loss / len(train_loader):.4f}')
 
-if __name__ == '__main__':
-    # Placeholder dataset (replace with SET5/DIV2K)
+        # Calculate average loss for the epoch and store it in the list
+        avg_epoch_loss = total_loss / len(train_loader)
+        epoch_losses.append(avg_epoch_loss)
 
-    lr_data = torch.randn(100, 3, 64, 64)
-    hr_data = torch.randn(100, 3, 256, 256)
-    dataset = TensorDataset(lr_data, hr_data)
-    train_loader = DataLoader(dataset, batch_size=16, shuffle=True)
+        print(f'Epoch {epoch + 1}, Loss: {avg_epoch_loss:.4f}')
+    return epoch_losses
 
-    model = ESSR(upscale_factor=4)
-    train_essr(model, train_loader, epochs=10)
+
+# Placeholder dataset (replace with SET5/DIV2K)
+
+lr_data = torch.randn(100, 3, 64, 64)
+hr_data = torch.randn(100, 3, 256, 256)
+dataset = TensorDataset(lr_data, hr_data)
+train_loader = DataLoader(dataset, batch_size=16, shuffle=True)
+
+
+epochs = 10
+model = ESSR(upscale_factor=4)
+epoch_losses =train_essr(model, train_loader, epochs=epochs)
+
+
+# Plotting the loss curve
+plt.figure(figsize=(10, 5))  # Adjust figure size if needed
+plt.plot(np.arange(1, epochs + 1), epoch_losses, marker='o', linestyle='-')
+plt.title('Training Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.grid(True)
+plt.show()
