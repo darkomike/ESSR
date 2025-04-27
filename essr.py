@@ -5,7 +5,6 @@ from torchvision.models import vgg16
 from torchvision.models.vgg import VGG16_Weights
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset,TensorDataset
-
 import os
 import warnings
 import urllib.error
